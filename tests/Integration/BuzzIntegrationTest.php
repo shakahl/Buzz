@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Buzz\Test\Unit\Client;
+namespace Buzz\Test\Integration;
 
 use Buzz\Browser;
 use Buzz\Client\BuzzClientInterface;
@@ -10,6 +10,7 @@ use Buzz\Client\Curl;
 use Buzz\Client\FileGetContents;
 use Buzz\Client\MultiCurl;
 use Buzz\Exception\ClientException;
+use Buzz\Exception\NetworkException;
 use Buzz\Message\FormRequestBuilder;
 use Nyholm\Psr7\Factory\Psr17Factory;
 use Nyholm\Psr7\Request;
@@ -17,11 +18,11 @@ use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 
-class FunctionalTest extends TestCase
+class BuzzIntegrationTest extends TestCase
 {
     protected function setUp()
     {
-        if (!isset($_SERVER['BUZZ_TEST_SERVER']) || empty($_SERVER['BUZZ_TEST_SERVER'])) {
+        if (empty($_SERVER['BUZZ_TEST_SERVER'])) {
             $this->markTestSkipped('The test server is not configured.');
         }
     }
@@ -50,7 +51,21 @@ class FunctionalTest extends TestCase
         $data = json_decode($response->getBody()->__toString(), true);
         $this->assertArrayHasKey('SERVER', $data, $response->getBody()->__toString());
 
-        $this->assertArrayNotHasKey('CONTENT_TYPE', $data['SERVER']);
+        $this->assertEmpty($data['SERVER']['CONTENT_TYPE']);
+    }
+
+    /**
+     * @dataProvider provideClient
+     */
+    public function testException($client, $async)
+    {
+        if ($async) {
+            $this->markTestSkipped('Async clients should not throw exceptions');
+        }
+        $request = new Request('GET', $_SERVER['BUZZ_TEST_SERVER'].'?delay=3');
+
+        $this->expectException(NetworkException::class);
+        $client->sendRequest($request, ['timeout' => 1]);
     }
 
     /**
@@ -83,7 +98,7 @@ class FunctionalTest extends TestCase
 
         $builder = new FormRequestBuilder();
         $builder->addField('company[name]', 'Google');
-        $builder->addFile('image', __DIR__.'/../../Resources/image.png', 'image/png', 'filename.png');
+        $builder->addFile('image', __DIR__.'/../Resources/image.png', 'image/png', 'filename.png');
         $browser = new Browser($client, new Psr17Factory());
         $response = $browser->submitForm($_SERVER['BUZZ_TEST_SERVER'], $builder->build());
 
@@ -112,7 +127,7 @@ class FunctionalTest extends TestCase
         $browser = new Browser($client, new Psr17Factory());
         $response = $browser->submitForm($_SERVER['BUZZ_TEST_SERVER'], [
             'image' => [
-                'path' => __DIR__.'/../../Resources/large.png',
+                'path' => __DIR__.'/../Resources/large.png',
                 'filename' => 'filename.png',
                 'contentType' => 'image/png',
             ],
@@ -128,7 +143,7 @@ class FunctionalTest extends TestCase
         $this->assertGreaterThan(39618, $data['FILES']['image']['size']);
     }
 
-    public function testMultiCurlExecutesRequestsConcurently()
+    public function testMultiCurlExecutesRequestsConcurrently()
     {
         $client = new MultiCurl(new Psr17Factory(), ['timeout' => 30]);
 

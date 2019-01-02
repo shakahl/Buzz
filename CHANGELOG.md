@@ -2,6 +2,15 @@
 
 The change log shows what have been Added, Changed, Deprecated and Removed between versions. 
 
+## 1.0.0-beta2
+
+### Changed
+
+- `MultiCurl` will never throw exception when handling messages asynchronously. 
+All exceptions will be handled in the callback. 
+- `MultiCurl::sendRequest()` will throw exception if one occur. 
+- Make sure `MultiCurl::proceed()` is non-blocking.
+
 ## 1.0.0-beta1
 
 ### Added
@@ -12,6 +21,7 @@ The change log shows what have been Added, Changed, Deprecated and Removed betwe
 
 - It is now mandatory to pass a client to the `Browser`'s constructor.
 - First argument of `Curl`, `MultiCurl` and `FileGetContent` clients should be the response factory.
+- Using stable version of `psr/http-client`.
 
 ## 0.17.2
 
